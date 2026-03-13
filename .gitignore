@@ -1,0 +1,35 @@
+# Python
+__pycache__/
+*.pyc
+venv/
+.env
+
+# Flutter
+.dart_tool/
+build/
+.flutter-plugins
+.flutter-plugins-dependencies
+
+# Android
+android/.gradle
+android/app/build
+
+# iOS
+ios/Flutter/ephemeral
+ios/Pods
+
+# MacOS
+macos/Flutter/ephemeral
+
+# Linux
+linux/flutter/ephemeral
+
+# Windows
+windows/flutter/ephemeral
+
+# VSCode
+.vscode/
+
+# OS
+.DS_Store
+Thumbs.db
