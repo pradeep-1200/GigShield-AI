@@ -20,7 +20,12 @@ OPENWEATHER_API_KEY = os.environ.get("OPENWEATHER_API_KEY", "")
 # Load model
 try:
     BASE_DIR = os.path.dirname(__file__)
-    model_path = os.path.join(BASE_DIR, '../ml/risk_model.pkl')
+    model_path = os.path.join(BASE_DIR, 'risk_model.pkl')
+    
+    logger.info(f"Loading ML model from: {model_path}")
+    if not os.path.exists(model_path):
+        logger.error("ML model file not found!")
+
     with open(model_path, 'rb') as f:
         saved_data = pickle.load(f)
         model = saved_data['model']
