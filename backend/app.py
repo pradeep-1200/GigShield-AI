@@ -42,25 +42,26 @@ def get_weather_and_aqi(city):
             # Weather API
             url = f"https://api.openweathermap.org/data/2.5/weather?q={city}&appid={OPENWEATHER_API_KEY}&units=metric"
             res = requests.get(url)
-            if res.status_code == 404:
-                return None
-            res = res.json()
-            temp = res["main"]["temp"]
-            rain = res.get("rain", {}).get("1h", 0.0)
-            lat, lon = res["coord"]["lat"], res["coord"]["lon"]
-            
-            # AQI API
-            aqi_url = f"https://api.openweathermap.org/data/2.5/air_pollution?lat={lat}&lon={lon}&appid={OPENWEATHER_API_KEY}"
-            aqi_res = requests.get(aqi_url).json()
-            aqi_level = aqi_res["list"][0]["main"]["aqi"]
-            
-            # Convert 1-5 to 50-400
-            aqi_map = {1: 50, 2: 100, 3: 150, 4: 250, 5: 400}
-            aqi_val = aqi_map.get(aqi_level, 150)
-            
-            return {"temperature": temp, "rainfall": rain, "aqi": aqi_val}
+            if res.status_code == 200:
+                res = res.json()
+                temp = res["main"]["temp"]
+                rain = res.get("rain", {}).get("1h", 0.0)
+                lat, lon = res["coord"]["lat"], res["coord"]["lon"]
+                
+                # AQI API
+                aqi_url = f"https://api.openweathermap.org/data/2.5/air_pollution?lat={lat}&lon={lon}&appid={OPENWEATHER_API_KEY}"
+                aqi_res = requests.get(aqi_url).json()
+                aqi_level = aqi_res["list"][0]["main"]["aqi"]
+                
+                # Convert 1-5 to 50-400
+                aqi_map = {1: 50, 2: 100, 3: 150, 4: 250, 5: 400}
+                aqi_val = aqi_map.get(aqi_level, 150)
+                
+                return {"temperature": temp, "rainfall": rain, "aqi": aqi_val}
+            else:
+                logger.warning(f"City {city} not found or API error. Falling back to simulation.")
         except Exception as e:
-            logger.error(f"Failed to fetch real weather. Error: {e}")
+            logger.error(f"Failed to fetch real weather for {city}. Error: {e}")
 
     # Fallback to algorithmic simulation based on hash of city name if API key absent
     city_hash = int(hashlib.md5(city.lower().encode('utf-8')).hexdigest(), 16)
@@ -84,9 +85,6 @@ def predict_risk():
         city = data.get('city', 'Chennai')
         real_env = get_weather_and_aqi(city)
         
-        if real_env is None:
-            return jsonify({"error": "Invalid city name. City not found."}), 404
-            
         logger.info(f"Fetched weather for {city}: {real_env}")
         
         if model is None:
