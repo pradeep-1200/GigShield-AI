@@ -5,6 +5,7 @@ import pandas as pd
 import requests
 import os
 import hashlib
+import traceback
 
 # Configure logging
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(name)s - %(levelname)s - %(message)s')
@@ -71,58 +72,66 @@ def get_risk_level(score):
 
 @app.route("/predict-risk", methods=["POST"])
 def predict_risk():
-    data = request.json
-    logger.info(f"Received risk prediction request for data: {data}")
-    
-    city = data.get('city', 'Chennai')
-    real_env = get_weather_and_aqi(city)
-    
-    if real_env is None:
-        return jsonify({"error": "Invalid city name. City not found."}), 404
+    try:
+        data = request.json
+        logger.info(f"Received risk prediction request for data: {data}")
         
-    logger.info(f"Fetched weather for {city}: {real_env}")
-    
-    if model is None:
-        return jsonify({"error": "ML Model not trained yet"}), 500
+        city = data.get('city', 'Chennai')
+        real_env = get_weather_and_aqi(city)
         
-    input_data = {
-        'city': city,
-        'rainfall_mm': real_env["rainfall"],
-        'temperature_c': real_env["temperature"],
-        'aqi': real_env["aqi"],
-        'flood_history': data.get('flood_history', 0),
-        'working_hours': data.get('hours', 8),
-        'weekly_income': data.get('income', 5000),
-        'platform': data.get('platform', 'Zomato')
-    }
-    
-    df = pd.DataFrame([input_data])
-    df = pd.get_dummies(df)
-    df = df.reindex(columns=model_columns, fill_value=0)
-    
-    model_risk = float(model.predict(df)[0])
-    
-    # Formula fallback to guarantee dynamic weighting logic requirement
-    formula_risk = (real_env["rainfall"]/200 + real_env["temperature"]/50 + real_env["aqi"]/500) / 3
-    final_risk = round(min((model_risk + formula_risk) / 2, 1.0), 2)
-    risk_level = get_risk_level(final_risk)
-    
-    explanation = f"Why your risk is {risk_level}:\n"
-    explanation += f"• Rainfall is {real_env['rainfall']} mm.\n"
-    explanation += f"• Temperature is {real_env['temperature']}°C.\n"
-    explanation += f"• AQI is {real_env['aqi']}.\n"
-    if real_env['rainfall'] > 20 or real_env['temperature'] > 38 or real_env['aqi'] > 250:
-        explanation += "These extreme environmental conditions significantly increase the probability of delivery disruptions."
-    else:
-        explanation += "Current environmental factors indicate safe delivery operations."
+        if real_env is None:
+            return jsonify({"error": "Invalid city name. City not found."}), 404
+            
+        logger.info(f"Fetched weather for {city}: {real_env}")
+        
+        if model is None:
+            return jsonify({"error": "ML Model not trained yet"}), 500
+            
+        input_data = {
+            'city': city,
+            'rainfall_mm': real_env["rainfall"],
+            'temperature_c': real_env["temperature"],
+            'aqi': real_env["aqi"],
+            'flood_history': data.get('flood_history', 0),
+            'working_hours': data.get('hours', 8),
+            'weekly_income': data.get('income', 5000),
+            'platform': data.get('platform', 'Zomato')
+        }
+        
+        df = pd.DataFrame([input_data])
+        df = pd.get_dummies(df)
+        df = df.reindex(columns=model_columns, fill_value=0)
+        
+        model_risk = float(model.predict(df)[0])
+        
+        # Formula fallback to guarantee dynamic weighting logic requirement
+        formula_risk = (real_env["rainfall"]/200 + real_env["temperature"]/50 + real_env["aqi"]/500) / 3
+        final_risk = round(min((model_risk + formula_risk) / 2, 1.0), 2)
+        risk_level = get_risk_level(final_risk)
+        
+        explanation = f"Why your risk is {risk_level}:\n"
+        explanation += f"• Rainfall is {real_env['rainfall']} mm.\n"
+        explanation += f"• Temperature is {real_env['temperature']}°C.\n"
+        explanation += f"• AQI is {real_env['aqi']}.\n"
+        if real_env['rainfall'] > 20 or real_env['temperature'] > 38 or real_env['aqi'] > 250:
+            explanation += "These extreme environmental conditions significantly increase the probability of delivery disruptions."
+        else:
+            explanation += "Current environmental factors indicate safe delivery operations."
 
-    logger.info(f"Calculated risk score: {final_risk}")
-    return jsonify({
-        "risk_score": final_risk,
-        "risk_level": risk_level,
-        "weather_data": real_env,
-        "ai_explanation": explanation
-    })
+        logger.info(f"Calculated risk score: {final_risk}")
+        return jsonify({
+            "risk_score": final_risk,
+            "risk_level": risk_level,
+            "weather_data": real_env,
+            "ai_explanation": explanation
+        })
+    except Exception as e:
+        logger.error(f"Error in predict-risk: {e}\n{traceback.format_exc()}")
+        return jsonify({
+            "error": "Internal Server Error",
+            "message": str(e),
+            "traceback": traceback.format_exc()
+        }), 500
 
 @app.route("/calculate-premium", methods=["POST"])
 def calculate_premium():

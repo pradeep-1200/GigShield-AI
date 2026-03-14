@@ -4,7 +4,8 @@ import 'dart:io';
 import 'package:http/http.dart' as http;
 
 class ApiService {
-  static const String baseUrl = "https://gigshield-ai.onrender.com";
+  static const String baseUrl = "h
+  ttps://gigshield-ai.onrender.com";
 
   static String _handleError(dynamic error) {
     if (error is TimeoutException) {
